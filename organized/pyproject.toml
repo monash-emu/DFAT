@@ -1,0 +1,9 @@
+[tool.poetry]
+name = "PH_CQ_analysis"
+version = "0.0.1"
+description = "Analysis of community quarantine (CQ) protocols in the Philippines during first phase (Mar-Dec 2020) of COVID-19 pandemic"
+authors = ["Mark Tolentino <mtolentino@ateneo.edu>"]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
