@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from summer2 import CompartmentalModel, Stratification, Multiply
 from summer2.parameters import Parameter
@@ -7,6 +8,7 @@ from summer2.functions.time import get_piecewise_function as pcwise_fcn
 from summer2.functions.time import get_linear_interpolation_function as linear_interp_fcn
 from summer2.functions.time import get_sigmoidal_interpolation_function as sigmoidal_interp_fcn
 
+DATA_PATH = Path(__file__).parent.parent / "data"
 REF_DATE = datetime(2020,4,7)
 
 def build_model(num_breakpts, transmission_modifier_mode = 'pcwise_constant'):
@@ -69,10 +71,10 @@ def build_base_model(num_breakpts, transmission_modifier_mode = 'pcwise_constant
     return m
 
 def generate_age_mixing_matrix(home_weight=1.0, work_weight=1.0, school_weight=0.0, other_weight=1.0):
-    mixing_matrix_home = pd.read_csv("/Users/mark/dev/DFAT/organized/data/mixing_matrices/12_year_bands/synthetic_mixing_ncr_home.csv")
-    mixing_matrix_work = pd.read_csv("/Users/mark/dev/DFAT/organized/data/mixing_matrices/12_year_bands/synthetic_mixing_ncr_work.csv")
-    mixing_matrix_school = pd.read_csv("/Users/mark/dev/DFAT/organized/data/mixing_matrices/12_year_bands/synthetic_mixing_ncr_school.csv")
-    mixing_matrix_other = pd.read_csv("/Users/mark/dev/DFAT/organized/data/mixing_matrices/12_year_bands/synthetic_mixing_ncr_other.csv")
+    mixing_matrix_home = pd.read_csv(str(DATA_PATH)+"/mixing_matrices/12_year_bands/synthetic_mixing_ncr_home.csv")
+    mixing_matrix_work = pd.read_csv(str(DATA_PATH)+"/mixing_matrices/12_year_bands/synthetic_mixing_ncr_work.csv")
+    mixing_matrix_school = pd.read_csv(str(DATA_PATH)+"/mixing_matrices/12_year_bands/synthetic_mixing_ncr_school.csv")
+    mixing_matrix_other = pd.read_csv(str(DATA_PATH)+"/mixing_matrices/12_year_bands/synthetic_mixing_ncr_other.csv")
     age_mixing_matrix = home_weight * mixing_matrix_home.drop(['Unnamed: 0'],axis=1).to_numpy() + work_weight * mixing_matrix_work.drop(['Unnamed: 0'],axis=1).to_numpy() + school_weight * mixing_matrix_school.drop(['Unnamed: 0'],axis=1).to_numpy() + other_weight * mixing_matrix_other.drop(['Unnamed: 0'],axis=1).to_numpy()
     return age_mixing_matrix
 
@@ -97,26 +99,35 @@ def generate_pcwise_transmission_params(num_breakpts):
 
 def generate_transmission_params(times,num_breakpts):
     #This is for sigmoidal and linear interp.
-    curr_bp = times[0]
-    breakpts = []
-    vals = []
-    breakpts.append(curr_bp)
-    vals.append(Parameter("val0"))
-    time_length = times[1] - times[0]
-    subinterval_length = time_length / (num_breakpts + 1)
-    for i in range(1,num_breakpts+1):
-        curr_bp += subinterval_length
+    if isinstance(num_breakpts, int):
+        curr_bp = times[0]
+        breakpts = []
+        vals = []
         breakpts.append(curr_bp)
-        vals.append(Parameter("val"+str(i)))
-    breakpts.append(times[1])
-    vals.append(Parameter("val"+str(num_breakpts+1)))
+        vals.append(Parameter("val0"))
+        time_length = times[1] - times[0]
+        subinterval_length =  time_length / (num_breakpts + 1)
+        for i in range(1,num_breakpts+1):
+            curr_bp += subinterval_length
+            breakpts.append(curr_bp)
+            vals.append(Parameter("val"+str(i)))
+        breakpts.append(times[1])
+        vals.append(Parameter("val"+str(num_breakpts+1)))
+    elif num_breakpts == 'fixed1':
+        breakpts = [0, 20, 39, 55, 75, 95, 118, 134, 154, 174, 194, 214, 234, 254, 268]
+        num_breakpts = len(breakpts)
+        vals = []
+        for i in range(0,num_breakpts):
+            vals.append(Parameter("val"+str(i)))
     return breakpts, vals
 
 def generate_default_parameters(m,num_breakpts,transmission_parameter_mode='pcwise_constant'):
-    time_length = m.times.max() - m.times.min()
-    subinterval_length = time_length / (num_breakpts + 1)
+    if num_breakpts == 'fixed1':
+        num_breakpts = 15
     defp = {}
     if transmission_parameter_mode == 'pcwise_constant':
+        time_length = m.times.max() - m.times.min()
+        subinterval_length = time_length / (num_breakpts + 1)
         for i in range(1,num_breakpts+2):
             defp["len_pd"+str(i)] = 0.9*subinterval_length
             defp["rate"+str(i)] = 0.1
