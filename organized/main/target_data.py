@@ -18,5 +18,5 @@ def import_notification_target():
     #fig = fig.add_trace(go.Scatter(x = notification_smoothed.keys(), y=notification_smoothed, name = "smoothed"))
     #fig.show()
 
-    notification_target = notification_smoothed[31::2]
-    return notification_target
+    notification_target = notification_smoothed[30::1]
+    return notification_data, notification_target

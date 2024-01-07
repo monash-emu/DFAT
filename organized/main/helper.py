@@ -44,8 +44,13 @@ def get_sigmoidal_transmission_modifier(times,param_dict,num_breakpts):
         vals.append(param_dict["val"+str(num_breakpts+1)])
     elif num_breakpts == 'fixed1':
         breakpts = [0, 20, 39, 55, 75, 95, 118, 134, 154, 174, 194, 214, 234, 254, 268]
-        num_breakpts = len(breakpts)
-        for i in range(0,num_breakpts):
+        num_breakpts = len(breakpts)-2
+        for i in range(0,num_breakpts+2):
+            vals.append(param_dict["val"+str(i)])
+    elif num_breakpts == 'fixed2':
+        breakpts = [0, 24, 39, 55, 85, 118, 134, 147, 177, 208, 238, 268]
+        num_breakpts = len(breakpts)-2
+        for i in range(0,num_breakpts+2):
             vals.append(param_dict["val"+str(i)])
     f = sigmoidal_interp_fcn(breakpts, vals)
     F = stf.get_time_callable(f)
@@ -98,6 +103,8 @@ def generate_transmission_priors(num_breakpts):
     priors = []
     if num_breakpts == 'fixed1':
         num_breakpts = 13
+    elif num_breakpts == 'fixed2':
+        num_breakpts = 10
     for i in range(0,num_breakpts+2):
-        priors.append(esp.UniformPrior("val"+str(i),(0,1)))
+        priors.append(esp.UniformPrior("val"+str(i),(0.0,2.0)))
     return priors

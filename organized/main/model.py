@@ -26,7 +26,7 @@ def build_base_model(num_breakpts, transmission_modifier_mode = 'pcwise_constant
     timestep = 1,
     ref_date=REF_DATE
     )
-    m.set_initial_population({"S": 13484462.0, "E1": 360.0 , "I1": 544.0})
+    m.set_initial_population({"S": 13484462.0, "E1": 90.0, "E2": 90.0, "E3": 90.0, "E4": 90.0 , "I1": 136.0, "I2": 136.0, "I2": 136.0, "I3": 136.0, "I4": 136.0})
     #We set up a time-varying "transmission modifier" that may be piecewise constant, sigmoidal, or linear interpolated
     if transmission_modifier_mode == 'pcwise_constant':
         breakpts, rates = generate_pcwise_transmission_params(num_breakpts)
@@ -44,10 +44,10 @@ def build_base_model(num_breakpts, transmission_modifier_mode = 'pcwise_constant
     m.add_transition_flow("progression3", 0.6,"E3","E4")
     m.add_transition_flow("progression4", 0.6,"E4","I1")
     #Detection can happen from any of the I compartments
-    m.add_transition_flow("notification1", Parameter("detection_rate"),"I1","Q1")
-    m.add_transition_flow("notification2", Parameter("detection_rate"),"I2","Q2")
-    m.add_transition_flow("notification3", Parameter("detection_rate"),"I3","Q3")
-    m.add_transition_flow("notification4", Parameter("detection_rate"),"I4","Q4")
+    m.add_transition_flow("notification1", Parameter("detection_rate1"),"I1","Q1")
+    m.add_transition_flow("notification2", Parameter("detection_rate2"),"I2","Q2")
+    m.add_transition_flow("notification3", Parameter("detection_rate3"),"I3","Q3")
+    m.add_transition_flow("notification4", Parameter("detection_rate4"),"I4","Q4")
     # The progressions along the I (or Q) compartments are governed (ultimately) by a single parameter tau, which corresponds to the mean no. of days of infectiousness
     # The rate for each transition is 4/tau (the 4 is due to the chained compartments structure).
     # Detection of cases can be done at any stage of the infectiousness period, given by the transition from Ik to Qk, for k=1,2,3,4
@@ -67,6 +67,12 @@ def build_base_model(num_breakpts, transmission_modifier_mode = 'pcwise_constant
     m.request_output_for_flow("notification2", "notification2")
     m.request_output_for_flow("notification3", "notification3")
     m.request_output_for_flow("notification4", "notification4")
+    m.request_output_for_compartments(name="infectious1", compartments=["I1"], save_results=True)
+    m.request_output_for_compartments(name="infectious2", compartments=["I2"], save_results=True)
+    m.request_output_for_compartments(name="infectious3", compartments=["I3"], save_results=True)
+    m.request_output_for_compartments(name="infectious4", compartments=["I4"], save_results=True)
+    m.request_output_for_compartments(name="infectious", compartments=["I1","I2","I3","I4"], save_results=True)
+    m.request_output_for_compartments(name="N", compartments=["S", "E1", "E2", "E3", "E4", "I1", "I2", "I3", "I4", "Q1", "Q2", "Q3", "Q4","R"], save_results=True)
     m.request_aggregate_output(name = "notifications", sources=["notification1", "notification2", "notification3", "notification4"], save_results=True)
     return m
 
@@ -83,6 +89,7 @@ def generate_age_stratification(model, home_weight=1.0, work_weight=1.0, school_
     strata = [str(n) for n in range(0,61,12)]
     strat = Stratification(name="age", strata=strata, compartments=model.compartments)
     strat.set_population_split({"0": 0.2215, "12": 0.2108, "24": 0.2192, "36": 0.1598, "48": 0.1099, "60": 0.0788})
+    strat.set_mixing_matrix(age_mixing_matrix)
     return strat
 
 def generate_pcwise_transmission_params(num_breakpts):
@@ -115,15 +122,23 @@ def generate_transmission_params(times,num_breakpts):
         vals.append(Parameter("val"+str(num_breakpts+1)))
     elif num_breakpts == 'fixed1':
         breakpts = [0, 20, 39, 55, 75, 95, 118, 134, 154, 174, 194, 214, 234, 254, 268]
-        num_breakpts = len(breakpts)
+        num_breakpts = len(breakpts)-2
         vals = []
-        for i in range(0,num_breakpts):
+        for i in range(0,num_breakpts+2):
+            vals.append(Parameter("val"+str(i)))
+    elif num_breakpts == 'fixed2':
+        breakpts = [0, 24, 39, 55, 85, 118, 134, 147, 177, 208, 238, 268]
+        num_breakpts = len(breakpts)-2
+        vals = []
+        for i in range(0,num_breakpts+2):
             vals.append(Parameter("val"+str(i)))
     return breakpts, vals
 
 def generate_default_parameters(m,num_breakpts,transmission_parameter_mode='pcwise_constant'):
     if num_breakpts == 'fixed1':
-        num_breakpts = 15
+        num_breakpts = 13
+    if num_breakpts == 'fixed2':
+        num_breakpts = 10
     defp = {}
     if transmission_parameter_mode == 'pcwise_constant':
         time_length = m.times.max() - m.times.min()
@@ -134,5 +149,8 @@ def generate_default_parameters(m,num_breakpts,transmission_parameter_mode='pcwi
     else:
         for i in range(0,num_breakpts+2):
             defp["val"+str(i)] = 0.1
-    defp["detection_rate"] = 0.35
+    defp["detection_rate1"] = 0.5
+    defp["detection_rate2"] = 0.45
+    defp["detection_rate3"] = 0.4
+    defp["detection_rate4"] = 0.35
     return defp
